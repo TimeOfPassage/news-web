@@ -46,7 +46,17 @@ const routes = [
                         path: '/drafts',
                         name: 'DraftArticle',
                         component: () => import('@/views/document/Draft.vue'),
-                    }
+                    },
+                    {
+                        path: '/new_article',
+                        name: 'NewArticle',
+                        component: () => import('@/views/document/NewArticle.vue')
+                    },
+                    {
+                        path: '/article_detail',
+                        name: 'ArticleDetail',
+                        component: () => import('@/views/document/ArticleDetail.vue')
+                    },
                 ]
             },
             {
@@ -71,16 +81,6 @@ const routes = [
                 component: () => import('@/views/demos/TableDemo.vue'),
             }
         ]
-    },
-    {
-        path: '/new_article',
-        name: 'NewArticle',
-        component: () => import('@/views/document/NewArticle.vue')
-    },
-    {
-        path: '/article_detail',
-        name: 'ArticleDetail',
-        component: () => import('@/views/document/ArticleDetail.vue')
     },
     {
         path: '/login',

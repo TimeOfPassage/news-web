@@ -1,205 +1,167 @@
-<script setup>
-import EditorJS from "@editorjs/editorjs";
-import Header from "@/components/editor/heading";
-import List from "@editorjs/list";
-import ImageTool from "@editorjs/image";
-import inlineCode from "@editorjs/inline-code";
-import embed from "@editorjs/embed";
-import quote from "@editorjs/quote";
-import marker from "@editorjs/marker";
-import code from "@editorjs/code";
-import link from "@editorjs/link";
-import delimiter from "@editorjs/delimiter";
-import raw from "@editorjs/raw";
-import table from "@editorjs/table";
-import warning from "@editorjs/warning";
-import paragraph from "@editorjs/paragraph";
-import checklist from "@editorjs/checklist";
-import AttachesTool from "@editorjs/attaches";
-//
-import { apiUpload, apiOuterDownloadUrl } from "@/api/material/materialApi";
-import { apiAdd } from "@/api/document/articleApi";
-import { ref, reactive, onMounted } from "vue";
+<script>
+import "@wangeditor/editor/dist/css/style.css"; // 引入 css
+import { onBeforeUnmount, reactive, shallowRef, onMounted } from "vue";
+import { Editor, Toolbar } from "@wangeditor/editor-for-vue";
 import { ElMessage } from "element-plus";
-const data = reactive({
-  readOnly: false,
-  state: "",
-  title: "",
-  content: {},
-});
-const doPreview = () => {
-  editor.readOnly = true;
-};
-const doSave = () => {
-  editor.save().then((savedData) => {
-    data.content = savedData;
-    apiAdd({
-      title: data.title,
-      content: JSON.stringify(data.content),
-    })
-      .then((res) => {
-        if (res.success) {
-          ElMessage.success({
-            message:
-              "新增文章成功, 三秒后自动关闭当前窗口，如果没有关闭，请手动关闭.",
-          });
-          setTimeout(() => {
-            window.close();
-          }, 3000);
-        } else {
-          ElMessage.error(res.message);
-        }
+import { apiAdd } from "@/api/document/articleApi";
+import { useRouter } from "vue-router";
+export default {
+  components: { Editor, Toolbar },
+  setup() {
+    // 编辑器实例，必须用 shallowRef
+    const editorRef = shallowRef();
+
+    const data = reactive({
+      mode: "default", // 或 'simple'
+      article: {
+        title: "",
+        contentHtml: "<p></p>",
+        contentJson: {},
+      },
+    });
+
+    const toolbarConfig = {};
+
+    toolbarConfig.excludeKeys = [
+      "undo",
+      "redo"
+    ];
+
+    const editorConfig = {
+      placeholder: "请在这里开始写下你的故事...",
+    };
+
+    // 组件销毁时，也及时销毁编辑器
+    onBeforeUnmount(() => {
+      const editor = editorRef.value;
+      if (editor == null) return;
+      editor.destroy();
+    });
+
+    const handleCreated = (editor) => {
+      editorRef.value = editor; // 记录 editor 实例，重要！
+    };
+    const router = useRouter();
+    const doBack = () => {
+      router.back();
+    };
+    const doSave = () => {
+      // console.log(editorRef);
+      data.article.contentJson = editorRef.value.children;
+      data.article.contentHtml = editorRef.value.getHtml();
+      // debugger
+      apiAdd({
+        title: data.article.title,
+        content: JSON.stringify(data.article.contentJson),
+        contentHtml: data.article.contentHtml,
       })
-      .catch((err) => {
-        ElMessage.error("服务器繁忙，请稍后再试");
-      });
-  });
+        .then((res) => {
+          if (res.success) {
+            ElMessage.success("新增文章成功");
+            router.back();
+          } else {
+            ElMessage.error(res.message);
+          }
+        })
+        .catch((err) => {
+          ElMessage.error("服务器繁忙，请稍后再试");
+        });
+    };
+
+    return {
+      editorRef,
+      toolbarConfig,
+      editorConfig,
+      handleCreated,
+      doSave,
+      doBack,
+      data,
+    };
+  },
 };
-const editor = new EditorJS({
-  holder: "editorjs",
-  data: {},
-  placeholder: "请在这里开始输入你的正文...",
-  tools: {
-    header: {
-      class: Header,
-      inlineToolbar: true,
-      config: {
-        placeholder: "Enter a header",
-      },
-    },
-    list: {
-      class: List,
-    },
-    code: {
-      class: code,
-    },
-    inlineCode: {
-      class: inlineCode,
-    },
-    embed: {
-      class: embed,
-    },
-    link: {
-      class: link,
-      inlineToolbar: true,
-    },
-    marker: {
-      inlineToolbar: true,
-      class: marker,
-    },
-    table: {
-      class: table,
-    },
-    raw: {
-      class: raw,
-    },
-    delimiter: {
-      inlineToolbar: true,
-      class: delimiter,
-    },
-    quote: {
-      inlineToolbar: true,
-      class: quote,
-    },
-    image: {
-      class: ImageTool,
-      config: {
-        uploader: {
-          uploadByFile(file) {
-            return apiUpload(file).then((response) => {
-              console.log(response);
-              if (response.success) {
-                return {
-                  success: 1,
-                  file: {
-                    url: apiOuterDownloadUrl(response.data.id),
-                    name: response.data.fileName,
-                    size: response.data.size,
-                    title: response.data.fileName,
-                  },
-                };
-              } else {
-                return {
-                  success: 0,
-                };
-              }
-            });
-          },
-        },
-      },
-    },
-    warning: {
-      class: warning,
-    },
-    paragraph: {
-      class: paragraph,
-    },
-    checklist: {
-      class: checklist,
-    },
-    attaches: {
-      class: AttachesTool,
-      config: {
-        // endpoint: apiUploadUrl(),
-        buttonText: "选择上传文件",
-        errorMessage: "文件上传失败",
-        additionalRequestHeaders: {
-          Authorization: localStorage.getItem("token"),
-        },
-        uploader: {
-          uploadByFile(file) {
-            return apiUpload(file).then((response) => {
-              console.log(response);
-              if (response.success) {
-                return {
-                  success: 1,
-                  file: {
-                    url: apiOuterDownloadUrl(response.data.id),
-                    name: response.data.fileName,
-                    size: response.data.size,
-                    title: response.data.fileName,
-                  },
-                };
-              } else {
-                return {
-                  success: 0,
-                };
-              }
-            });
-          },
-        },
-      },
-    },
-  },
-  onReady: () => {
-    console.log("Editor.js is ready to work!");
-  },
-  // onChange: (api, event) => {
-  //   doSave();
-  // },
-});
-onMounted(() => {});
 </script>
 
 <template>
-  <el-row style="padding: 0px 20px">
-    <el-col :span="12" class="col">
-      <el-input v-model="data.title" placeholder="请在这里输入文章标题" />
-    </el-col>
-    <el-col :span="6"></el-col>
-    <el-col :span="6" align="right" class="col">
-      <el-button type="primary" @click="doPreview"> 预览 </el-button>
-      <!-- <el-button type="primary"> 存草稿 </el-button> -->
-      <el-button type="danger" @click="doSave"> 提交审核 </el-button>
-    </el-col>
-  </el-row>
-  <el-divider border-style="dashed" style="margin: 5px 0px" />
-  <div id="editorjs"></div>
+  <div>
+    <Toolbar
+      class="editor-toolbar"
+      :editor="editorRef"
+      :defaultConfig="toolbarConfig"
+      :mode="data.mode"
+    />
+  </div>
+  <div class="content">
+    <div class="editor-container">
+      <div class="title-container">
+        <input
+          placeholder="请在这里输入故事名字"
+          v-model="data.article.title"
+        />
+      </div>
+      <Editor
+        class="editor-text-area"
+        v-model="data.article.contentHtml"
+        :defaultConfig="editorConfig"
+        :mode="data.mode"
+        @onCreated="handleCreated"
+      />
+    </div>
+    <el-row justify="end" style="padding-right: 40px">
+      <el-col :span="1">
+        <el-affix target=".content" position="bottom" :offset="100">
+          <el-button type="info" size="small" @click="doBack"> 返回 </el-button>
+        </el-affix>
+        <el-affix target=".content" position="bottom" :offset="70">
+          <el-button type="primary" size="small"> 预览 </el-button>
+        </el-affix>
+        <el-affix target=".content" position="bottom" :offset="40">
+          <el-button type="danger" size="small" @click="doSave">
+            保存
+          </el-button>
+        </el-affix>
+      </el-col>
+    </el-row>
+  </div>
 </template>
 
 <style scoped>
-.col {
-  height: 44px;
-  line-height: 44px;
+.editor-toolbar {
+  /* width: 100%; */
+  background-color: #fcfcfc;
+  margin: 0 auto;
+}
+
+.content {
+  height: calc(100% - 40px);
+  background-color: rgb(245, 245, 245);
+  overflow-y: auto;
+  position: relative;
+}
+
+.editor-container {
+  width: 850px;
+  margin: 30px auto 150px auto;
+  background-color: #fff;
+  padding: 20px 50px 50px 50px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 12%);
+}
+
+.title-container {
+  padding: 20px 0;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.title-container input {
+  font-size: 30px;
+  border: 0;
+  outline: none;
+  width: 100%;
+  line-height: 1;
+}
+
+.editor-text-area {
+  min-height: 900px;
+  margin-top: 20px;
 }
 </style>

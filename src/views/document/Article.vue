@@ -49,21 +49,16 @@ const deleteRow = (row) => {
 };
 // 新增
 const addRow = () => {
-  // 开新标签页
-  const newPage = router.resolve({
-    name: "NewArticle",
-  });
-  window.open(newPage.href, "_blank");
+  router.push({ name: "NewArticle" });
 };
 // 详情页面
 const toDetail = (row) => {
-  const newPage = router.resolve({
+  router.push({
     name: "ArticleDetail",
     query: {
       id: row.id,
     },
   });
-  window.open(newPage.href, "_blank");
 };
 // 编辑
 const editRow = (row) => {};
