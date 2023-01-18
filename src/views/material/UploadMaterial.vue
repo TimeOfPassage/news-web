@@ -67,7 +67,7 @@ onMounted(() => {});
         :auto-upload="false"
         accept=".jpg,.png,.jpeg"
         :data="{
-          categoryId: props.categoryId,
+          categoryId: props.categoryId || '',
         }"
         :headers="{
           Authorization: data.token,

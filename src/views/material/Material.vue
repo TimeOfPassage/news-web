@@ -88,7 +88,7 @@ const fetchAllCategories = () => {
       if (res.success) {
         data.categories.push({
           id: null,
-          name: "默认",
+          name: "全部",
         });
         if (res.data) {
           res.data.map((category) => {

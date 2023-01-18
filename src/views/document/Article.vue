@@ -61,7 +61,14 @@ const toDetail = (row) => {
   });
 };
 // 编辑
-const editRow = (row) => {};
+const editRow = (row) => {
+  router.push({
+    name: "NewArticle",
+    query: {
+      id: row.id,
+    },
+  });
+};
 // 查询
 const findRowList = () => {
   apiPage({

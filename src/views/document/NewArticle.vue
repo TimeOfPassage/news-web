@@ -3,7 +3,7 @@ import "@wangeditor/editor/dist/css/style.css"; // 引入 css
 import { onBeforeUnmount, reactive, shallowRef, onMounted } from "vue";
 import { Editor, Toolbar } from "@wangeditor/editor-for-vue";
 import { ElMessage } from "element-plus";
-import { apiAdd } from "@/api/document/articleApi";
+import { apiAdd, apiModify, apiDetail } from "@/api/document/articleApi";
 import { useRouter } from "vue-router";
 export default {
   components: { Editor, Toolbar },
@@ -13,6 +13,7 @@ export default {
 
     const data = reactive({
       mode: "default", // 或 'simple'
+      articleId: undefined,
       article: {
         title: "",
         contentHtml: "<p></p>",
@@ -22,14 +23,27 @@ export default {
 
     const toolbarConfig = {};
 
-    toolbarConfig.excludeKeys = [
-      "undo",
-      "redo"
-    ];
+    toolbarConfig.excludeKeys = ["undo", "redo"];
 
     const editorConfig = {
       placeholder: "请在这里开始写下你的故事...",
     };
+    const router = useRouter();
+    //
+    onMounted(() => {
+      // 获取文章详情，如果存在id，则是编辑模式
+      const id = router.currentRoute.value.query.id;
+      if (id) {
+        apiDetail(id)
+          .then((res) => {
+            data.article.title = res.data.title;
+            data.article.contentHtml = res.data.contentHtml;
+            data.article.contentJson = res.data.contentJson;
+            data.articleId = id;
+          })
+          .catch((error) => ElMessage.error("服务开小差了,请稍后再试"));
+      }
+    });
 
     // 组件销毁时，也及时销毁编辑器
     onBeforeUnmount(() => {
@@ -41,31 +55,48 @@ export default {
     const handleCreated = (editor) => {
       editorRef.value = editor; // 记录 editor 实例，重要！
     };
-    const router = useRouter();
+
     const doBack = () => {
       router.back();
     };
+    // 新增 or 更新
     const doSave = () => {
       // console.log(editorRef);
-      data.article.contentJson = editorRef.value.children;
-      data.article.contentHtml = editorRef.value.getHtml();
+      const _contentJson = editorRef.value.children;
+      const _contentHtml = editorRef.value.getHtml();
       // debugger
-      apiAdd({
-        title: data.article.title,
-        content: JSON.stringify(data.article.contentJson),
-        contentHtml: data.article.contentHtml,
-      })
-        .then((res) => {
-          if (res.success) {
-            ElMessage.success("新增文章成功");
-            router.back();
-          } else {
-            ElMessage.error(res.message);
-          }
+      if (data.articleId) {
+        apiModify({
+          id: data.articleId,
+          title: data.article.title,
+          content: JSON.stringify(_contentJson),
+          contentHtml: _contentHtml,
         })
-        .catch((err) => {
-          ElMessage.error("服务器繁忙，请稍后再试");
-        });
+          .then((res) => {
+            if (res.success) {
+              ElMessage.success("修改文章成功");
+              router.back();
+            } else {
+              ElMessage.error(res.message);
+            }
+          })
+          .catch((err) => ElMessage.error("服务器繁忙，请稍后再试"));
+      } else {
+        apiAdd({
+          title: data.article.title,
+          content: JSON.stringify(_contentJson),
+          contentHtml: _contentHtml,
+        })
+          .then((res) => {
+            if (res.success) {
+              ElMessage.success("新增文章成功");
+              router.back();
+            } else {
+              ElMessage.error(res.message);
+            }
+          })
+          .catch((err) => ElMessage.error("服务器繁忙，请稍后再试"));
+      }
     };
 
     return {
@@ -105,22 +136,24 @@ export default {
         :mode="data.mode"
         @onCreated="handleCreated"
       />
+      <el-row justify="end" style="padding-right: 40px">
+        <el-col :span="1">
+          <el-affix target=".content" position="bottom" :offset="100">
+            <el-button type="info" size="small" @click="doBack">
+              返回
+            </el-button>
+          </el-affix>
+          <el-affix target=".content" position="bottom" :offset="70">
+            <el-button type="primary" size="small"> 预览 </el-button>
+          </el-affix>
+          <el-affix target=".content" position="bottom" :offset="40">
+            <el-button type="danger" size="small" @click="doSave">
+              保存
+            </el-button>
+          </el-affix>
+        </el-col>
+      </el-row>
     </div>
-    <el-row justify="end" style="padding-right: 40px">
-      <el-col :span="1">
-        <el-affix target=".content" position="bottom" :offset="100">
-          <el-button type="info" size="small" @click="doBack"> 返回 </el-button>
-        </el-affix>
-        <el-affix target=".content" position="bottom" :offset="70">
-          <el-button type="primary" size="small"> 预览 </el-button>
-        </el-affix>
-        <el-affix target=".content" position="bottom" :offset="40">
-          <el-button type="danger" size="small" @click="doSave">
-            保存
-          </el-button>
-        </el-affix>
-      </el-col>
-    </el-row>
   </div>
 </template>
 

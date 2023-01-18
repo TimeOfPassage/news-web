@@ -1,15 +1,19 @@
 <script setup>
-import { ref, provide } from "vue";
+import { ref, provide, onMounted } from "vue";
 const sidebarCollapse = ref(false);
 // ↓提供给sidebar注入
 provide("sidebarCollapse", sidebarCollapse);
 const updateSidebarCollapse = (val) => {
   sidebarCollapse.value = val;
 };
-let clientHeight = window.innerHeight - 50 - 35 + "px";
-window.onresize = function temp() {
+let clientHeight = "600px";
+const calcClientHeight = () => {
   clientHeight = window.innerHeight - 50 - 35 + "px";
 };
+onMounted(() => {
+  calcClientHeight();
+  window.onresize = calcClientHeight;
+});
 </script>
 
 <template>
